@@ -1,0 +1,51 @@
+Statistik Gabungan:
+                               mean           std   min   max              Condition
+Total Memory (GB)             7.000  0.000000e+00   7.0   7.0                   Idle
+Used Memory (GB)              3.000  0.000000e+00   3.0   3.0                   Idle
+Available Memory (GB)         6.000  0.000000e+00   6.0   6.0                   Idle
+Memory Usage Percentage (%)  21.416  3.703280e-02  21.4  21.5                   Idle
+CPU Usage Percentage (%)      1.172  1.307130e+00   0.0   7.4                   Idle
+Total Memory (GB)             7.000  0.000000e+00   7.0   7.0                    ROS
+Used Memory (GB)              3.000  0.000000e+00   3.0   3.0                    ROS
+Available Memory (GB)         5.000  0.000000e+00   5.0   5.0                    ROS
+Memory Usage Percentage (%)  27.500  0.000000e+00  27.5  27.5                    ROS
+CPU Usage Percentage (%)     47.252  2.262944e+00  43.0  51.9                    ROS
+Total Memory (GB)             7.000  0.000000e+00   7.0   7.0        ROS + Kalkulasi
+Used Memory (GB)              3.000  0.000000e+00   3.0   3.0        ROS + Kalkulasi
+Available Memory (GB)         5.000  0.000000e+00   5.0   5.0        ROS + Kalkulasi
+Memory Usage Percentage (%)  29.400  2.153270e-14  29.4  29.4        ROS + Kalkulasi
+CPU Usage Percentage (%)     49.744  1.935085e+00  44.2  57.1        ROS + Kalkulasi
+Total Memory (GB)             7.000  0.000000e+00   7.0   7.0  ROS + Kalkulasi + DWT
+Used Memory (GB)              3.000  0.000000e+00   3.0   3.0  ROS + Kalkulasi + DWT
+Available Memory (GB)         5.000  0.000000e+00   5.0   5.0  ROS + Kalkulasi + DWT
+Memory Usage Percentage (%)  29.900  2.153270e-14  29.9  29.9  ROS + Kalkulasi + DWT
+CPU Usage Percentage (%)     55.334  3.883592e+00  46.8  63.0  ROS + Kalkulasi + DWT
+Total Memory (GB)             7.000  0.000000e+00   7.0   7.0  ROS + Kalkulasi + UKF
+Used Memory (GB)              5.000  0.000000e+00   5.0   5.0  ROS + Kalkulasi + UKF
+Available Memory (GB)         4.000  0.000000e+00   4.0   4.0  ROS + Kalkulasi + UKF
+Memory Usage Percentage (%)  36.528  4.535574e-02  36.5  36.6  ROS + Kalkulasi + UKF
+CPU Usage Percentage (%)     52.690  1.930555e+00  48.8  60.3  ROS + Kalkulasi + UKF
+
+
+
+
+
+
+
+
+Statistik Gabungan:
+                               mean           std   min   max              Condition
+Memory Usage Percentage (%)  21.416  3.703280e-02  21.4  21.5                   Idle
+CPU Usage Percentage (%)      1.172  1.307130e+00   0.0   7.4                   Idle
+
+Memory Usage Percentage (%)  27.500  0.000000e+00  27.5  27.5                    ROS
+CPU Usage Percentage (%)     47.252  2.262944e+00  43.0  51.9                    ROS
+
+Memory Usage Percentage (%)  29.400  2.153270e-14  29.4  29.4        ROS + Kalkulasi
+CPU Usage Percentage (%)     49.744  1.935085e+00  44.2  57.1        ROS + Kalkulasi
+
+Memory Usage Percentage (%)  29.900  2.153270e-14  29.9  29.9  ROS + Kalkulasi + DWT
+CPU Usage Percentage (%)     55.334  3.883592e+00  46.8  63.0  ROS + Kalkulasi + DWT
+
+Memory Usage Percentage (%)  36.528  4.535574e-02  36.5  36.6  ROS + Kalkulasi + UKF
+CPU Usage Percentage (%)     52.690  1.930555e+00  48.8  60.3  ROS + Kalkulasi + UKF

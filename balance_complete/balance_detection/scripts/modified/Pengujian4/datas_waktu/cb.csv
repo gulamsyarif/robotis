@@ -1,0 +1,15 @@
+S C:\Users\syari\OneDrive\Documents\Skripsii\balance_complete\balance_detection\scripts> python -u "c:\Users\syari\OneDrive\Documents\Skripsii\balance_complete\balance_detection\scripts\modified\Pengujian4\datas_waktu\celan\waktu.py"
+C:\Users\syari\OneDrive\Documents\Skripsii\balance_complete\balance_detection\scripts\modified\Pengujian4\datas_waktu\celan\raw_output.csv:
+  CoM: Mean=0.000409, Min=0.000288, Max=0.000826
+  ZMP: Mean=0.001243, Min=0.000504, Max=0.002536
+  SP:  Mean=0.000154, Min=0.000096, Max=0.000744
+
+C:\Users\syari\OneDrive\Documents\Skripsii\balance_complete\balance_detection\scripts\modified\Pengujian4\datas_waktu\celan\WT_output.csv:
+  CoM: Mean=0.000490, Min=0.000224, Max=0.003490
+  ZMP: Mean=0.001064, Min=0.000460, Max=0.003559
+  SP:  Mean=0.000170, Min=0.000074, Max=0.001693
+
+C:\Users\syari\OneDrive\Documents\Skripsii\balance_complete\balance_detection\scripts\modified\Pengujian4\datas_waktu\celan\UKF_output.csv:
+  CoM: Mean=0.003221, Min=0.001888, Max=0.140655
+  ZMP: Mean=0.001087, Min=0.000511, Max=0.003354
+  SP:  Mean=0.000153, Min=0.000084, Max=0.000657

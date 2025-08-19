@@ -1,0 +1,233 @@
+import numpy as np
+import csv
+import time
+
+# Variabel global untuk menyimpan data sensor
+accel = None
+orientation = None
+gyro_raw = None
+joint_positions = None
+previous_com = None  # Untuk menyimpan posisi CoM sebelumnya
+previous_time = None  # Untuk menghitung delta waktu
+
+
+# Load IMU data from CSV
+def load_imu_data(imu_reader):
+    global accel, orientation
+    row = next(imu_reader, None)  # Move to the next row
+    if row:
+        accel = (float(row['Accel_x']), float(row['Accel_y']), float(row['Accel_z']))
+        orientation = (
+            float(row['Orientation_x']),
+            float(row['Orientation_y']),
+            float(row['Orientation_z']),
+            float(row['Orientation_w'])
+        )
+    return row is not None
+
+# Load Joint States from CSV
+def load_joint_states(joint_reader):
+    global joint_positions
+    row = next(joint_reader, None)
+    if row:
+        joint_positions = np.array(eval(row['Joint States']))
+    return row is not None
+
+# Load filtered gyro data from CSV
+def load_filtered_gyro(gyro_reader):
+    global gyro_raw
+    row = next(gyro_reader, None)
+    if row:
+        gyro_raw = np.array([
+            float(row['Gyro_x']),
+            float(row['Gyro_y']),
+            float(row['Gyro_z'])
+        ])
+    return row is not None
+
+# Data massa dan offset dari masing-masing servo
+servo_data = [
+    {"id": 20, "mass": 0.09, "CoM_offset": (0, 2.85, 45.1)},
+    {"id": 3, "mass": 0.079, "CoM_offset": (-10.8, 1.3, 37.5)},
+    {"id": 4, "mass": 0.079, "CoM_offset": (10.8, 1.3, 37.5)},
+    {"id": 5, "mass": 0.031, "CoM_offset": (-23.4, 0.9, 37.5)},
+    {"id": 6, "mass": 0.031, "CoM_offset": (23.4, 0.9, 37.5)},
+    {"id": 1, "mass": 0.086, "CoM_offset": (-4.5, 1.8, 35.2)},
+    {"id": 2, "mass": 0.086, "CoM_offset": (4.5, 1.8, 35.2)},
+    {"id": 19, "mass": 1.179, "CoM_offset": (0, 1.8, 35.2)},
+    {"id": 9, "mass": 0.082, "CoM_offset": (-3.2, -2.7, 23.5)},
+    {"id": 11, "mass": 0.164, "CoM_offset": (-3.2, 1, 23.5)},
+    {"id": 10, "mass": 0.082, "CoM_offset": (3.2, -2.7, 23.5)},
+    {"id": 12, "mass": 0.246, "CoM_offset": (3.2, 1, 23.5)},
+    {"id": 13, "mass": 0.139, "CoM_offset": (-3.2, 0.7, 16.4)},
+    {"id": 14, "mass": 0.139, "CoM_offset": (3.2, 0.7, 16.4)},
+    {"id": 17, "mass": 0.082, "CoM_offset": (-3.2, -2.7, 3.7)},
+    {"id": 15, "mass": 0.282, "CoM_offset": (-3.2, 0.4, 3.7)},
+    {"id": 16, "mass": 0.282, "CoM_offset": (3.2, 0.4, 3.7)},
+    {"id": 7, "mass": 0.282, "CoM_offset": (-4.5, 1.8, 28.4)},
+    {"id": 8, "mass": 0.282, "CoM_offset": (4.5, 1.8, 28.4)}
+]
+
+def quaternion_to_rotation_matrix(q):
+    w, x, y, z = q
+    return np.array([
+        [1 - 2 * (y**2 + z**2), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+        [2 * (x * y + z * w), 1 - 2 * (x**2 + z**2), 2 * (y * z - x * w)],
+        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x**2 + y**2)]
+    ])
+
+# Pemetaan ID ke index 'name' saat ini genap kiri, ganjil kanan
+id_to_index_map = {
+    1: 18,  # r_sho_pitch   9,   # l_sho_pitch
+    2: 9,   # l_sho_pitch   18,  # r_sho_pitch 
+    3: 19,  # r_sho_roll    10,  # l_sho_roll  
+    4: 10,  # l_sho_roll    19,  # r_sho_roll
+    5: 13,  # r_el          4,   # l_el  
+    6: 4,   # l_el          13,  # r_el
+    7: 16, # r_hip_yaw      6,   # l_hip_roll
+    8: 7, # l_hip_yaw       15,  # r_hip_roll
+    9: 15,  # r_hip_roll    5,   # l_hip_pitch
+    10: 6,   # l_hip_roll   14, # r_hip_pitch 
+    11: 14, # r_hip_pitch   8,  # l_knee
+    12: 5,   # l_hip_pitch  17, # r_knee 
+    13: 17, # r_knee        2,  # l_ank_pitch7
+    14: 8,  # l_knee        11, # r_ank_pitch
+    15: 11,  # r_ank_pitch  3,  # l_ank_roll
+    16: 2,  # l_ank_pitch   12, # r_ank_roll 
+    17: 12, # r_ank_roll    7, # l_hip_yaw
+    18: 3,  # l_ank_roll    16, # r_hip_yaw 
+    19: 1,  # head_tilt
+    20: 0,  # head_pan
+}
+
+# Function to calculate area using the Shoelace Theorem
+def calculate_area(coords):
+    x = coords[:, 0]
+    y = coords[:, 1]
+    return 0.5 * np.abs(np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:]))
+
+# Function to calculate the perimeter
+def calculate_perimeter(coords):
+    return np.sum(np.sqrt(np.sum(np.diff(coords, axis=0)**2, axis=1)))
+
+# Detect support phase
+def detect_support_phase(joint_states, imu_accel_z):
+    l_ank_pitch = joint_states[id_to_index_map[13]]
+    r_ank_pitch = joint_states[id_to_index_map[14]]
+    if l_ank_pitch > 0 and r_ank_pitch > 0:
+        return 'Double Support'
+    elif l_ank_pitch <= 0 and r_ank_pitch <= 0:
+        return 'Single Support'
+    else:
+        return 'Single Support' if imu_accel_z < -0.4 else 'Double Support'
+
+def calculate_dynamic_com():
+    global previous_com, previous_time
+    
+    if accel is None or orientation is None or joint_positions is None or gyro_raw is None:
+        print("Waiting for sensor data...")
+        return None
+
+    total_mass = 0
+    weighted_sum = np.array([0.0, 0.0, 0.0])
+
+    # Buat matriks rotasi dari orientasi (quaternion)
+    rotation_matrix = quaternion_to_rotation_matrix(orientation)
+
+    # Hitung delta_time dengan kondisi awal
+    current_time = time.time()
+    delta_time = current_time - previous_time if previous_time is not None else 0
+    previous_time = current_time
+
+    # Buat matriks rotasi tambahan berdasarkan data gyroscope
+    if delta_time > 0:
+        rotation_adjustment = np.identity(3) + np.cross(np.identity(3), gyro_raw) * delta_time
+    else:
+        rotation_adjustment = np.identity(3)  # Gunakan matriks identitas jika `delta_time` masih nol
+
+    # Gabungkan matriks rotasi dengan koreksi gyroscope
+    adjusted_rotation_matrix = rotation_matrix @ rotation_adjustment
+
+    for servo in servo_data:
+        mass = servo["mass"]
+        offset = np.array(servo["CoM_offset"])
+        servo_id = servo["id"]
+        joint_index = id_to_index_map.get(servo_id)
+        joint_pos = joint_positions[joint_index] if joint_index is not None and joint_index < len(joint_positions) else 0
+
+        local_position = offset + np.array([0, 0, joint_pos])
+        transformed_position = adjusted_rotation_matrix.dot(local_position)
+        weighted_sum += transformed_position * mass
+        total_mass += mass
+
+    CoM_x, CoM_y, CoM_z = weighted_sum / total_mass
+    previous_com = np.array([CoM_x, CoM_y, CoM_z])
+
+    return CoM_x, CoM_y, CoM_z
+
+FOOT_BASE_WIDTH = 0.08
+FOOT_BASE_LENGTH = 0.123
+
+def calculate_dynamic_zmp(CoM_x, CoM_y, CoM_z):
+    GRAVITY = 9.81
+    F_z = accel[2] - GRAVITY
+    total_mass = sum(servo["mass"] for servo in servo_data)
+    F_normal = total_mass * GRAVITY
+    mu = 0.5
+    F_friction = mu * F_normal
+
+    # Hitung momen rotasi tambahan dari data gyroscope
+    rotational_moment_x = gyro_raw[1] * CoM_z * total_mass  # Rotasi di sumbu Y mempengaruhi momen di sumbu X
+    rotational_moment_y = gyro_raw[0] * CoM_z * total_mass  # Rotasi di sumbu X mempengaruhi momen di sumbu Y
+    
+    moment_x = F_friction * (FOOT_BASE_WIDTH / 2) + rotational_moment_x
+    moment_y = F_friction * (FOOT_BASE_LENGTH / 2) + rotational_moment_y
+
+    ZMP_x = CoM_x - (CoM_z / F_normal) * (accel[0] + moment_y / F_normal)
+    ZMP_y = CoM_y - (CoM_z / F_normal) * (accel[1] - moment_x / F_normal)
+    
+    return ZMP_x, ZMP_y, moment_x, moment_y
+
+# Main function
+def main():
+    output_file = r'C:\Users\syari\Downloads\balance_detection_modified\balance_detection\scripts\UKF_dibeneri\Data\nendang\raw_complete.csv'
+    with open(output_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["com_x", "com_y", "com_z", "proj_com_x", "proj_com_y", "proj_com_z", 
+                         "moment_x", "moment_y", "zmp_x", "zmp_y", "support_phase", "area", "perimeter"])
+
+    imu_file = r'C:\Users\syari\Downloads\balance_detection_modified\balance_detection\scripts\UKF_dibeneri\Data\nendang\raw_imu.csv'
+    joint_file = r'C:\Users\syari\Downloads\balance_detection_modified\balance_detection\scripts\UKF_dibeneri\Data\nendang\joint_states.csv'
+    gyro_file = r'C:\Users\syari\Downloads\balance_detection_modified\balance_detection\scripts\UKF_dibeneri\Data\nendang\raw_imu.csv'
+
+    with open(imu_file, 'r') as imu_csv, open(joint_file, 'r') as joint_csv, open(gyro_file, 'r') as gyro_csv:
+        imu_reader = csv.DictReader(imu_csv)
+        joint_reader = csv.DictReader(joint_csv)
+        gyro_reader = csv.DictReader(gyro_csv)
+
+        while load_imu_data(imu_reader) and load_joint_states(joint_reader) and load_filtered_gyro(gyro_reader):
+            com_data = calculate_dynamic_com()
+            if com_data:
+                CoM_x, CoM_y, CoM_z = com_data
+                ZMP_x, ZMP_y, moment_x, moment_y = calculate_dynamic_zmp(CoM_x, CoM_y, CoM_z)
+                support_phase = detect_support_phase(joint_positions, accel[1])
+
+                points_single_support = np.array([[0, 0], [0, -12.3], [1.1, -13], [7.1, -13], [8.7, -12.3], [8.7, 0]])
+                points_double_support = np.array([[0, 0], [0, -12.3], [1.1, -13], [16.6, -13], [17.7, -12.3], [17.7, 0]])
+
+                points = points_single_support if support_phase == 'Single Support' else points_double_support
+                area = calculate_area(points)
+                perimeter = calculate_perimeter(points)
+
+                projected_com_x, projected_com_y, projected_com_z = CoM_x, CoM_y, 0
+                log_data = [CoM_x, CoM_y, CoM_z, projected_com_x, projected_com_y, projected_com_z,
+                            moment_x, moment_y, ZMP_x, ZMP_y, support_phase, area, perimeter]
+
+                with open(output_file, mode='a', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(log_data)
+                
+                print("Row processed and saved to CSV")
+
+if __name__ == '__main__':
+    main()
